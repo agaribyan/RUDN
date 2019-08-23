@@ -1,0 +1,466 @@
+#import numpy as np
+#from matplotlib import pyplot as plt
+#from random import expovariate as exprandom
+from threading import Thread
+###variable = Thread(target=function_name, args=(arg1, arg2,), name=«Имя потока») синтаксис задания потока
+
+#import time
+
+
+def dictappend(dict_part, app):  #функция аналог фукнции append, но для строки внутри словаря
+    dict_part.append(app)
+    return dict_part
+
+def dictpop(dict_part,popindex): #функция аналог фукнции pop, но для строки внутри словаря
+    dict_part.pop(popindex)
+    return dict_part
+
+
+
+Occ = {'Leaving':{'GB':[],'BG':[],'BE':[]},'Incoming':{'GB':[],'BG':[],'BE':[]}}
+
+def VNOs_work(this_vno,this_moment, this_time_lim):
+    while this_moment < this_time_lim:
+        minnow = this_time_lim
+        for k in this_vno.Occ.keys():
+            for t in this_vno.Occ[k].keys():
+                for i in range(len(this_vno.Occ[k][t])):
+                    if this_vno.Occ[k][i] < minnow:
+                        minnow = this_vno.Occ[k][t][i]
+                        I = i
+                        Key = k
+                        Type = t
+        this_moment = minnow
+        need_allocation = False
+        
+        if Key == 'Leaving':
+            this_vno.N[Type] -= 1
+            this_vno.R += this_vno.minB[Type]
+            this_vno.Occ[Key][Type] = dictpop(...)
+            .
+            .
+            .
+            need_allocation = True
+            if len(this_vno.Q[Type]) != 0: #СТОП, не только этого типа, нужно начинать с GB
+                #очередь не пуста, проверим может ли зайти
+                .
+                .
+                .
+        
+        if Key == 'Incoming': #поступление новой заявки
+            if R > this_vno.minB[Type]: #проверяем достаточно ли для неё ресурса
+                #ресурс выделить можем, поступает на обслуживание
+                this_vno.N[Type] += 1
+                this_vno.R -= this_vno.minB[Type]
+                this_vno.Occ[k][t] = dictpop(...)
+                .
+                .
+                .
+                need_allocation = True
+            else:
+                if len(this_vno.Q[Type]) < this_vno.Qmax[Type]: #если не хватило, то проверим может ли заявка пойти в очередь
+                    #есть место в очереди
+                    this_vno.Q[Type] = dicpappend(this_vno.Q[Type],this_moment)
+                    .
+                    .
+                    .
+                else:
+                    this_vno.block += 1
+        #проверяем нужно ли перераспределение
+        if need_allocation:
+            this_vno.Mu, this_vno.res_value = this_vno.RA(...)
+
+    return this_vno #,
+
+
+def RS(N,Q,MNOmax,minB):#,maxGB):
+    #ВАЖНАЯ ИНФА: тут в ind(а следоавтельно и в формуле для vno_maxres_mas) учтено, что нумерация VNO физически начинается с 1, а не с 0
+    #нужно это учесть, если перейду к 0
+    
+    s = []
+    n = 0
+    MMax = MNOmax
+    Nkeys = N.keys()
+    ind = np.zeros(len(Nkeys))
+    for i in Nkeys:
+        n += N[i]['GB'] + N[i]['BG']
+        s.append((N[i]['GB']+len(Q[i]['GB']))*minB[i]['GB'] + (N[i]['BG']+len(Q[i]['BG']))*minB[i]['BG']) #массив требуемых vno минимумов ресурса на ослуживание сразу всех имеющихся в их системе заявок(в том числе и тех, что в очереди)
+        MMax -= N[i]['GB']*minB[i]['GB'] + N[i]['BG']*minB[i]['BG']
+        if N[i]['GB'] == 0 and N[i]['BG'] == 0:
+            MMax -= 0.1*MNOmax
+            ind[int(str(i)[-1])] = 1
+    vno_dict = {}
+    r_dict = {}
+    if n !=0:
+        ss = np.zeros(3)
+        if sum(s) != 0:
+            for i in range(3):
+                ss[i] = s[i]/sum(s)
+        for j,key in enumerate(Nkeys): 
+            vno_dict[key] = N[key]['GB']*minB[key]['GB'] + N[key]['BG']*minB[key]['BG'] + 0.1*MNOmax*ind[j+1] + MMax*s[j]/sum(s)
+            r_dict[key] = vno_dict[key] - (N[key]['GB']*minB[key]['GB'] + N[key]['BG']*minB[key]['BG'])
+        return vno_dict, r_dict
+    else:
+        for key in Nkeys:
+            vno_dict[key] = MNOmax/len(Nkeys)
+            r_dict[key] = MNOmax/len(Nkeys)
+        return vno_dict, r_dict #Rmax и R
+
+
+
+
+
+def Simulation_main_function(delta, vno_mas):
+    model_time = 0
+    TimeLim = 10000
+    
+    while model_time < TimeLim:
+        for i in range(len(vno_mas)):
+            thread_mas[i] = Thread(target = VNOs_work, args=(vno_mas[i], model_time, model_time + delta), name = 'vno'+str(i))
+            #variable = Thread(target = VNOs_work, args=(vno_mas[i], model_time, model_time + delta), name = 'vno'+str(i))
+        #так, нужно четко ему сказать, что выполняй эти потоки и пока не закончишь не иди дальше
+        #чую какую-то жопу в этом плане
+        #но для начала нужно понять как сделать так, чтобы потоки создавались и запускались в цикле
+        #ведь нельзя их всех одинаково назвать
+        #может как-то поможет параметр name, но, как я понял, он чисто для того, чтобы различать потоки спрашивая какой запущег
+        #а может это сработает?
+        v1, r1 = RS(#...
+        for i in range(len(vno_mas)):
+            vno_mas[] ##### остановился тут !!!!!
+            
+        #vno_mas = RS( #vno_mas)#, VRRM_resourse)
+        model_time += delta
+
+
+#######################################
+
+class VNO():
+    
+    def __init__(self,Rmax, Lam, Volume, minB, maxGB, Qmax):
+        '''
+        формат вводных данных
+        Rmax - число (предоставляемый оператору ресурс)
+        Lam - {'GB': 0.54765 * 5,'BG':0.45235 * 5} #интенсивности потупления заявок
+        Volume = {'GB':1/60,'BG':[50*80,250*80]} #для "обслуживания"
+        minB = {'GB':int(0.3*1024*1024),'BG':1024*1024} 
+        maxGB - число
+        Qmax = {'GB':50,'BG':50} #максимальная длина очереди
+        '''
+        
+        #передаваемые начальные данные
+        self.Rmax = Rmax
+        self.R = Rmax #потом подумать нужно ли(по идее да, если тут классы схожи с классами в яве и тут не только фенкции задаются)
+        self.Lam = Lam
+        self.Volume = Volume
+        self.minB = minB 
+        self.maxGB = maxGB
+        self.Qmax = Qmax
+        
+        #задание массивов для работы и записи состояний
+        N = {'GB': 0,'BG': 0}
+        Mu = {'GB': [],'BG': []}  #пусть будет называть Моменты ухода, позже изменить, неудачное сходство с mu
+        Q = {'GB': [],'BG': []}
+        StTi = {'GB': [],'BG': []}
+        WaStTi = {'GB': [],'BG': []}
+        res_value = {'GB': 0,'BG': Rmax}
+        res = {'GB': Rmax,'BG': Rmax}
+        
+        #счетчики
+        All = {'GB': 0,'BG': 0}    #счетчик поступивших заявок(всего, в том числе блокированных)
+        Block = {'GB': 0,'BG': 0}      #счетчик блокировок
+        SWT = {'GB': 0,'BG': 0}        #Sum Waitung Time для нахождения среднего времени ожидания
+        SST = {'GB': 0,'BG': 0}       #Sum Service Time для вычисления среднего времени обслуживания
+        SQ = {'GB': 0,'BG': 0}        #Sum Queue для нахождения средней длины очереди
+        Nn = {'SST':{'GB': 0,'BG': 0},
+              'SWT':{'GB': 0,'BG': 0}}
+        SRfr = 0 #среднний объём условно свободного ресурса
+        
+        #model_time = 0                             #счетчик модельного времени
+    
+    #на всякий оставлю тут
+    #https://python-scripts.com/python-class
+    
+    
+    #
+    #теперь нужно скопировать сюда функцию для RA и подстроить её под то, что VNO теперь объекты классов, если требуется
+    #
+    def RA(moment, Mu, R, old_res_value, N, Rmax, maxGB, minB): #ResourceAllocation #то же что и raspredelenie
+    #def raspredelenie(moment, Mu, R, old_res_value, N, Rmax, maxGB, minB): #тут уже новые N, после увеличения/уменьшения(и не важно на сколько)
+        new_res_value = {'GB':0,'BG':Rmax}
+        n = N['GB'] + N['BG']
+        if n != 0:
+            if int(R/n) > (maxGB-minB['GB']):
+                R2 = R - (maxGB-minB['GB'])*N['GB']
+                if N['GB'] != 0:
+                    new_res_value['GB'] = maxGB
+                if N['BG'] != 0:
+                    new_res_value['BG'] = minB['BG'] + int(R2/(N['BG']))#может немного и неправильно присваивать, но если их и нет, то ничего всё равно не будет(вроде(проверить потом при маленьком timelim)
+            else:
+                new_res_value['GB'] = minB['GB'] + int(R/n)
+                new_res_value['BG'] = minB['BG'] + int(R/n)
+            for i in range(N['BG']):
+                Mu['BG'][i] = moment + (Mu['BG'][i]-moment)*old_res_value['BG']/new_res_value['BG']
+        return Mu['BG'], new_res_value
+
+
+#####################################################
+
+#начальные данные
+delta = 0.01
+#MNOmax =
+
+vno_mas = [VNO(Rmax= , Lam = , Volume = , minB = , maxGB = , Qmax = ), VNO(Rmax= , Lam = , Volume = , minB = , maxGB = , Qmax = ), VNO(Rmax= , Lam = , Volume = , minB = , maxGB = , Qmax = )]#при добавдении генератора Егора, отсюда убираются Lam и Volume
+#
+results = Simulation_main_function(delta, vno_mas)
+
+############################################
+
+КОПИЯ ПРЕДЫДУЩЕЙ ВЕРСИИ:
+
+
+'''
+def raspredelenie(moment, Mu, R, old_res_value, N, Rmax, maxGB, minB): #тут уже новые N, после увеличения/уменьшения(и не важно на сколько)
+    new_res_value = {'GB':0,'BG':Rmax}
+    n = N['GB'] + N['BG']
+    if n != 0:
+        if int(R/n) > (maxGB-minB['GB']):
+            R2 = R - (maxGB-minB['GB'])*N['GB']
+            if N['GB'] != 0:
+                new_res_value['GB'] = maxGB
+            if N['BG'] != 0:
+                new_res_value['BG'] = minB['BG'] + int(R2/(N['BG']))#может немного и неправильно присваивать, но если их и нет, то ничего всё равно не будет(вроде(проверить потом при маленьком timelim)
+        else:
+            new_res_value['GB'] = minB['GB'] + int(R/n)
+            new_res_value['BG'] = minB['BG'] + int(R/n)
+        for i in range(N['BG']):
+            Mu['BG'][i] = moment + (Mu['BG'][i]-moment)*old_res_value['BG']/new_res_value['BG']
+    return Mu['BG'], new_res_value
+'''
+'''
+def dictappend(dict_part, app):  #функция аналог фукнции append, но для строки внутри словаря
+    dict_part.append(app)
+    return dict_part
+
+def dictpop(dict_part,popindex): #функция аналог фукнции pop, но для строки внутри словаря
+    dict_part.pop(popindex)
+    return dict_part
+'''
+'''
+def ResourceSharing(N,Q,MNOmax,minB):#,maxGB):
+    s = []
+    n = 0
+    M3 = MNOmax
+    ind = np.zeros(4)
+    for i in N.keys():
+        n += N[i]['GB'] + N[i]['BG']
+        s.append((N[i]['GB']+len(Q[i]['GB']))*minB[i]['GB'] + (N[i]['BG']+len(Q[i]['BG']))*minB[i]['BG']) #массив требуемых vno минимумов ресурса на ослуживание сразу всех имеющихся в их системе заявок(в том числе и тех, что в очереди)
+        M3 -= N[i]['GB']*minB[i]['GB'] + N[i]['BG']*minB[i]['BG']
+        if N[i]['GB'] == 0 and N[i]['BG'] == 0:
+            M3 -= 0.1*MNOmax
+            ind[int(str(i)[-1])] = 1
+    
+    if n !=0:
+        ss = np.zeros(3)
+        if sum(s) != 0:
+            for i in range(3):
+                ss[i] = s[i]/sum(s)
+        vno1 = N['VNO1']['GB']*minB['VNO1']['GB'] + N['VNO1']['BG']*minB['VNO1']['BG'] + 0.1*MNOmax*ind[1] + M3*s[0]/sum(s)
+        vno2 = N['VNO2']['GB']*minB['VNO2']['GB'] + N['VNO2']['BG']*minB['VNO2']['BG'] + 0.1*MNOmax*ind[2] + M3*s[1]/sum(s)
+        vno3 = N['VNO3']['GB']*minB['VNO3']['GB'] + N['VNO3']['BG']*minB['VNO3']['BG'] + 0.1*MNOmax*ind[3] + M3*s[2]/sum(s)
+        r1 = vno1 - (N['VNO1']['GB']*minB['VNO1']['GB'] + N['VNO1']['BG']*minB['VNO1']['BG'])
+        r2 = vno2 - (N['VNO2']['GB']*minB['VNO2']['GB'] + N['VNO2']['BG']*minB['VNO2']['BG'])
+        r3 = vno3 - (N['VNO3']['GB']*minB['VNO3']['GB'] + N['VNO3']['BG']*minB['VNO3']['BG'])
+        return {'VNO1':vno1,'VNO2':vno2,'VNO3':vno3}, {'VNO1':r1,'VNO2':r2,'VNO3':r3}
+    else:
+        return {'VNO1':MNOmax/3,'VNO2':MNOmax/3,'VNO3':MNOmax/3}, {'VNO1': MNOmax/3,'VNO2': MNOmax/3,'VNO3': MNOmax/3} #Rmax и R
+'''
+
+def CheckQueue(model_time,Mu,Q,R,minB,WaStTi,Nn,StTi,Volume,res, SWT, SST, N):
+    for i in Q.keys():
+        while len(Q[i])!=0 and R > minB[i]: 
+            SWT[i] += model_time - WaStTi[i][0]
+            Nn['SWT'][i] += 1
+            WaStTi[i] = dictpop(WaStTi[i],0)
+            Q[i] = dictpop(Q[i],0)
+            #Mu[i] = dictappend(Mu[i], time+exprandom(m[i])*Rmax/res[i]) 
+            if i == 'BG':
+                Mu[i] = dictappend(Mu[i], model_time+np.random.uniform(Volume[i][0],Volume[i][1])/res[i])#usechlognorm(Volume[i][0],Volume[i][1],Volume[i][2])/res[i])  ###
+            else:
+                Mu[i] = dictappend(Mu[i], model_time+exprandom(Volume[i])) 
+            StTi[i] = dictappend(StTi[i],model_time)
+            N[i] += 1
+            R -= minB[i]
+    return Mu, Q, R, WaStTi, Nn, StTi, res, SWT, SST, N
+
+
+
+def Checking(model_time, Mu, res, SQ, res_value, R, N, StTi, Nn, SST, SWT, WaStTi, Q, minB, maxGB, Rmax, Volume, Tmax):
+    while any(x < model_time and x < Tmax for x in Mu['GB']) or any(x < model_time and x < Tmax for x in Mu['BG']): #or any(x < time and x < Tmax for x in Mu['BE']): #вышла ли за это время хоть одна заявка любого типа
+        minnow = Tmax
+        for i in Mu.keys():
+            for j in range(len(Mu[i])):
+                if Mu[i][j] < minnow:
+                    minnow = Mu[i][j]
+                    Apl = i
+                    J = j   #в итоге получим какого типа(Apl) вышла заявка, когда(minnow) и где она в своём массиве хранится
+        SST[Apl] += Mu[Apl][J] - StTi[Apl][J]
+        Nn['SST'][Apl] += 1
+        StTi[Apl] = dictpop(StTi[Apl],J)
+        Mu[Apl] = dictpop(Mu[Apl],J)
+        N[Apl] -= 1
+        R += minB[Apl]
+        Mu, Q, R, WaStTi, Nn, StTi, res, SWT, SST, N = CheckQueue(model_time,Mu,Q,R,minB,WaStTi,Nn,StTi,Volume,res, SWT, SST, N)
+        '''
+        for i in Q.keys(): #приоритет отдается очереди GB
+            while len(Q[i])!=0 and R > minB[i]: 
+                SWT[i] += model_time - WaStTi[i][0]
+                Nn['SWT'][i] += 1
+                WaStTi[i] = dictpop(WaStTi[i],0)
+                Q[i] = dictpop(Q[i],0)
+                #Mu[i] = dictappend(Mu[i], time+exprandom(m[i])*Rmax/res[i]) 
+                if i == 'BG':
+                    Mu[i] = dictappend(Mu[i], model_time+np.random.uniform(Volume[i][0],Volume[i][1])/res[i])#usechlognorm(Volume[i][0],Volume[i][1],Volume[i][2])/res[i])  ###
+                else:
+                    Mu[i] = dictappend(Mu[i], model_time+exprandom(Volume[i])) 
+                StTi[i] = dictappend(StTi[i],model_time)
+                N[i] += 1
+                R -= minB[i]
+        '''
+        Mu['BG'], res_value = raspredelenie(minnow,Mu, R, res_value, N, Rmax, maxGB, minB)
+        res['BG'] = res_value['BG']
+    #for i in Mu.keys():
+    #    SQ[i] += len(Q[i])
+    return Mu, res, SQ, res_value, R, N, StTi, Nn, SST, SWT, WaStTi, Q
+
+def VNO_global(Delta):
+    '''
+    #начальные данные
+    MNOmax = 288*1024*1024
+    Rmax = {'VNO1':MNOmax/3,
+            'VNO2':MNOmax/3,
+            'VNO3':MNOmax/3}
+    R = {'VNO1':MNOmax/3,
+         'VNO2':MNOmax/3,
+         'VNO3':MNOmax/3}
+    #numb_us = 15
+    Lam = {'VNO1':{'GB': 0.54765 * 5,'BG':0.45235 * 5},
+           'VNO2':{'GB': 0.54765 * 10,'BG':0.45235 * 10},
+           'VNO3':{'GB': 0.54765 * 15,'BG':0.45235 * 15}} #интенсивности потупления заявок
+    Volume = {'VNO1':{'GB':1/60,'BG':[50*80,250*80]},
+              'VNO2':{'GB':1/60,'BG':[50*80,250*80]},
+              'VNO3':{'GB':1/60,'BG':[50*80,250*80]}}
+    #m = {'GB':10,'BG':10,'BE':10}         #интенсивность обслуживания заявок GB(не зависит от количества ресурса), заявки/ед.вр. - интенсивность обслуживания, при занимании всего объёма ресурса заявками только BE
+    
+    minB = {'VNO1':{'GB':int(0.3*1024*1024),'BG':1024*1024},
+            'VNO2':{'GB':int(0.3*1024*1024),'BG':1024*1024},
+            'VNO3':{'GB':int(0.3*1024*1024),'BG':1024*1024}} #GB-vic(real time), BG-file sharing(non real time), BE-sma(non real time) в Килобитах   ##при фиксированных значениях минимумов может быть так, что ресурс займется полностью, без "услвоно свободного"
+    maxGB = {'VNO1':5*1024*1024,
+             'VNO2':5*1024*1024,
+             'VNO3':5*1024*1024} ##нужно учесть это и писать строгие неравенства в нужных местах
+    Mu = {'VNO1':{'GB': [],'BG': []},
+          'VNO2':{'GB': [],'BG': []},
+          'VNO3':{'GB': [],'BG': []}}
+    Q = {'VNO1':{'GB': [],'BG': []},
+         'VNO2':{'GB': [],'BG': []},
+         'VNO3':{'GB': [],'BG': []}}
+    StTi = {'VNO1':{'GB': [],'BG': []},
+            'VNO2':{'GB': [],'BG': []},
+            'VNO3':{'GB': [],'BG': []}}
+    WaStTi = {'VNO1':{'GB': [],'BG': []},
+              'VNO2':{'GB': [],'BG': []},
+              'VNO3':{'GB': [],'BG': []}}
+    Qmax = {'VNO1':{'GB':50,'BG':50},
+            'VNO2':{'GB':50,'BG':50},
+            'VNO3':{'GB':50,'BG':50}}                           #максимальная длина очереди(пока одинаковая для обоих)
+    N = {'VNO1':{'GB': 0,'BG': 0},
+         'VNO2':{'GB': 0,'BG': 0},
+         'VNO3':{'GB': 0,'BG': 0}}
+    occasion = {'GB1': exprandom(Lam['VNO1']['GB']),
+                'BG1': exprandom(Lam['VNO1']['BG']),
+                'GB2': exprandom(Lam['VNO2']['GB']),
+                'BG2': exprandom(Lam['VNO2']['BG']),
+                'GB3': exprandom(Lam['VNO3']['GB']),
+                'BG3': exprandom(Lam['VNO3']['BG']),
+                'RS': Delta}
+    res_value = {'VNO1':{'GB': 0,'BG': MNOmax/3},
+                 'VNO2':{'GB': 0,'BG': MNOmax/3},
+                 'VNO3':{'GB': 0,'BG': MNOmax/3}}
+    res = {'VNO1':{'GB': MNOmax/3,'BG': MNOmax/3},
+           'VNO2':{'GB': MNOmax/3,'BG': MNOmax/3},
+           'VNO3':{'GB': MNOmax/3,'BG': MNOmax/3}}
+    All = {'VNO1':{'GB': 0,'BG': 0},
+           'VNO2':{'GB': 0,'BG': 0},
+           'VNO3':{'GB': 0,'BG': 0}}       #счетчик поступивших заявок(всего, в том числе блокированных)
+    Block = {'VNO1':{'GB': 0,'BG': 0},
+             'VNO2':{'GB': 0,'BG': 0},
+             'VNO3':{'GB': 0,'BG': 0}}      #счетчик блокировок
+    SWT = {'VNO1':{'GB': 0,'BG': 0},
+           'VNO2':{'GB': 0,'BG': 0},
+           'VNO3':{'GB': 0,'BG': 0}}        #Sum Waitung Time для нахождения среднего времени ожидания
+    SST = {'VNO1':{'GB': 0,'BG': 0},
+           'VNO2':{'GB': 0,'BG': 0},
+           'VNO3':{'GB': 0,'BG': 0}}       #Sum Service Time для вычисления среднего времени обслуживания
+    SQ = {'VNO1':{'GB': 0,'BG': 0},
+          'VNO2':{'GB': 0,'BG': 0},
+          'VNO3':{'GB': 0,'BG': 0}}         #Sum Queue для нахождения средней длины очереди
+    Nn = {'VNO1':{'SST':{'GB': 0,'BG': 0},
+                  'SWT':{'GB': 0,'BG': 0}},
+          'VNO2':{'SST':{'GB': 0,'BG': 0},
+                  'SWT':{'GB': 0,'BG': 0}},
+          'VNO3':{'SST':{'GB': 0,'BG': 0},
+                  'SWT':{'GB': 0,'BG': 0}}}
+    SRfr = {'VNO1':0,'VNO2':0,'VNO3':0}  #среднний объём условно свободного ресурса
+    model_time = 0                             #счетчик модельного времени
+    Tmax = 50000                          #временно введём ограничение на модельное время, потом перейти к остановке по Наумову
+    '''
+    
+    while model_time < Tmax: 
+        model_time = min(occasion[x] for x in occasion.keys())
+        minnow = Tmax
+        for i in occasion.keys():
+            if occasion[i] < minnow:
+                now_oc = str(i)
+                minnow = occasion[i]
+        
+        if now_oc == 'RS': #момент перераспредления ресурса между VNO
+            Rmax, R = ResourceSharing(N,Q,MNOmax,minB)
+            for i in Mu.keys():#['VNO1','VNO2','VNO3']:
+                Mu[i], Q[i], R[i], WaStTi[i], Nn[i], StTi[i], res[i], SWT[i], SST[i], N[i] = CheckQueue(model_time,Mu[i],Q[i],R[i],minB[i],WaStTi[i],Nn[i],StTi[i],Volume[i],res[i], SWT[i], SST[i], N[i]) #проверка на случай если это VNO дали больше ресурса, чем до этого и она может уместить ещё одну заявку
+                Mu[i]['BG'], res_value[i] = raspredelenie(model_time,Mu[i], R[i], res_value[i], N[i], Rmax[i], maxGB[i], minB[i])
+                Mu[i], res[i], SQ[i], res_value[i], R[i], N[i], StTi[i], Nn[i], SST[i], SWT[i], WaStTi[i], Q[i] = Checking(model_time, Mu[i], res[i], SQ[i], res_value[i], R[i], N[i], StTi[i], Nn[i], SST[i], SWT[i], WaStTi[i], Q[i], minB[i], maxGB[i], Rmax[i], Volume[i], Tmax)
+                ###Mu[str(i)]['BG'], res_value[str(i)] = raspredelenie(model_time,Mu[str(i)], R[str(i)], res_value[str(i)], N[str(i)], Rmax[str(i)], maxGB[str(i)], minB[str(i)])
+            occasion['RS'] = model_time + Delta
+        
+        elif len(now_oc) == 3:  #поступление новой заявки
+            vno_num = str('VNO'+now_oc[2])
+            occasion[now_oc] = model_time + exprandom(Lam[vno_num][now_oc[:-1]]) #записываем время поступления следующей заявки этого типа
+            now_oc = str(now_oc[:-1])
+            All[vno_num][now_oc] += 1
+            
+            #проверка состояния системы на момент time+dt, вышло ли что-нибудь за это время
+            Mu[vno_num], res[vno_num], SQ[vno_num], res_value[vno_num], R[vno_num], N[vno_num], StTi[vno_num], Nn[vno_num], SST[vno_num], SWT[vno_num], WaStTi[vno_num], Q[vno_num] = Checking(model_time, Mu[vno_num], res[vno_num], SQ[vno_num], res_value[vno_num], R[vno_num], N[vno_num], StTi[vno_num], Nn[vno_num], SST[vno_num], SWT[vno_num], WaStTi[vno_num], Q[vno_num], minB[vno_num], maxGB[vno_num], Rmax[vno_num], Volume[vno_num], Tmax)
+            #поступление новой заявки:
+            if R[vno_num] > minB[vno_num][now_oc]:
+                N[vno_num][now_oc] += 1       #если ресурса достаточно, попадает на прибор
+                R[vno_num] -= minB[vno_num][now_oc]
+                if now_oc != 'GB':
+                    Mu[vno_num][now_oc] = dictappend(Mu[vno_num][now_oc], model_time + np.random.uniform(Volume[vno_num][now_oc][0],Volume[vno_num][now_oc][1])/res[vno_num][now_oc])#usechlognorm(Volume[now_apl][0],Volume[now_apl][1],Volume[now_apl][2])/res[now_apl])
+                else:
+                    Mu[vno_num][now_oc] = dictappend(Mu[vno_num][now_oc], model_time + exprandom(Volume[vno_num][now_oc]))
+                #Mu[now_apl] = dictappend(Mu[now_apl], time+exprandom(m[now_apl])*Rmax/res[now_apl]) ###
+                                                      #time+lognorm(...)/res[now_apl]) #lognorm == volume, res['GB'] всегда должна быть = Rmax
+                                                                 #проверить
+                StTi[vno_num][now_oc] = dictappend(StTi[vno_num][now_oc],model_time)
+                Mu[vno_num]['BG'], res_value[vno_num] = raspredelenie(model_time,Mu[vno_num], R[vno_num], res_value[vno_num], N[vno_num], Rmax[vno_num], maxGB[vno_num], minB[vno_num])
+                res[vno_num]['BG'] = res_value[vno_num]['BG']
+            else:
+                if len(Q[vno_num][now_oc]) < Qmax[vno_num][now_oc]:  #если в очереди есть место, поступает в очередь
+                    Q[vno_num][now_oc] = dictappend(Q[vno_num][now_oc], model_time)
+                    WaStTi[vno_num][now_oc] = dictappend(WaStTi[vno_num][now_oc],model_time)
+                else:
+                    Block[vno_num][now_oc] += 1
+            SRfr[vno_num] += R[vno_num]
+            #for i in Mu[vno_num].keys(): #####
+            #    SQ[vno_num][i] += len(Q[vno_num][i]) ####
+            SQ[vno_num][now_oc] += len(Q[vno_num][now_oc]) ####
+    return All, Block, SQ, SST, SWT, SRfr, Nn
