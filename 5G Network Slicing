@@ -3,74 +3,10 @@
 #from random import expovariate as exprandom
 from threading import Thread
 ###variable = Thread(target=function_name, args=(arg1, arg2,), name=«Имя потока») синтаксис задания потока
-
 #import time
 
 
-def dictappend(dict_part, app):  #функция аналог фукнции append, но для строки внутри словаря
-    dict_part.append(app)
-    return dict_part
-
-def dictpop(dict_part,popindex): #функция аналог фукнции pop, но для строки внутри словаря
-    dict_part.pop(popindex)
-    return dict_part
-
-
-
 Occ = {'Leaving':{'GB':[],'BG':[],'BE':[]},'Incoming':{'GB':[],'BG':[],'BE':[]}}
-
-def VNOs_work(this_vno,this_moment, this_time_lim):
-    while this_moment < this_time_lim:
-        minnow = this_time_lim
-        for k in this_vno.Occ.keys():
-            for t in this_vno.Occ[k].keys():
-                for i in range(len(this_vno.Occ[k][t])):
-                    if this_vno.Occ[k][i] < minnow:
-                        minnow = this_vno.Occ[k][t][i]
-                        I = i
-                        Key = k
-                        Type = t
-        this_moment = minnow
-        need_allocation = False
-        
-        if Key == 'Leaving':
-            this_vno.N[Type] -= 1
-            this_vno.R += this_vno.minB[Type]
-            this_vno.Occ[Key][Type] = dictpop(...)
-            .
-            .
-            .
-            need_allocation = True
-            if len(this_vno.Q[Type]) != 0: #СТОП, не только этого типа, нужно начинать с GB
-                #очередь не пуста, проверим может ли зайти
-                .
-                .
-                .
-        
-        if Key == 'Incoming': #поступление новой заявки
-            if R > this_vno.minB[Type]: #проверяем достаточно ли для неё ресурса
-                #ресурс выделить можем, поступает на обслуживание
-                this_vno.N[Type] += 1
-                this_vno.R -= this_vno.minB[Type]
-                this_vno.Occ[k][t] = dictpop(...)
-                .
-                .
-                .
-                need_allocation = True
-            else:
-                if len(this_vno.Q[Type]) < this_vno.Qmax[Type]: #если не хватило, то проверим может ли заявка пойти в очередь
-                    #есть место в очереди
-                    this_vno.Q[Type] = dicpappend(this_vno.Q[Type],this_moment)
-                    .
-                    .
-                    .
-                else:
-                    this_vno.block += 1
-        #проверяем нужно ли перераспределение
-        if need_allocation:
-            this_vno.Mu, this_vno.res_value = this_vno.RA(...)
-
-    return this_vno #,
 
 
 def RS(N,Q,MNOmax,minB):#,maxGB):
@@ -116,13 +52,15 @@ def Simulation_main_function(delta, vno_mas):
     
     while model_time < TimeLim:
         for i in range(len(vno_mas)):
-            thread_mas[i] = Thread(target = VNOs_work, args=(vno_mas[i], model_time, model_time + delta), name = 'vno'+str(i))
+            #thread_mas[i] = Thread(target = VNOs_work, args=(vno_mas[i], model_time, model_time + delta), name = 'vno'+str(i))
+            thread_mas[i] = Thread(target = vno_mas[i].VNOs_work, args=(model_time, model_time + delta), name = 'vno'+str(i))
+            
             #variable = Thread(target = VNOs_work, args=(vno_mas[i], model_time, model_time + delta), name = 'vno'+str(i))
         #так, нужно четко ему сказать, что выполняй эти потоки и пока не закончишь не иди дальше
         #чую какую-то жопу в этом плане
         #но для начала нужно понять как сделать так, чтобы потоки создавались и запускались в цикле
         #ведь нельзя их всех одинаково назвать
-        #может как-то поможет параметр name, но, как я понял, он чисто для того, чтобы различать потоки спрашивая какой запущег
+        #может как-то поможет параметр name, но, как я понял, он чисто для того, чтобы различать потоки спрашивая какой запущен
         #а может это сработает?
         v1, r1 = RS(#...
         for i in range(len(vno_mas)):
@@ -135,18 +73,16 @@ def Simulation_main_function(delta, vno_mas):
 #######################################
 
 class VNO():
-    
     def __init__(self,Rmax, Lam, Volume, minB, maxGB, Qmax):
         '''
         формат вводных данных
-        Rmax - число (предоставляемый оператору ресурс)
+        Rmax - число #предоставляемый оператору ресурс)
         Lam - {'GB': 0.54765 * 5,'BG':0.45235 * 5} #интенсивности потупления заявок
-        Volume = {'GB':1/60,'BG':[50*80,250*80]} #для "обслуживания"
-        minB = {'GB':int(0.3*1024*1024),'BG':1024*1024} 
-        maxGB - число
+        Volume = {'GB':1/60,'BG':[50*80,250*80]}   #Обслуживание (для GB - параметр экспоненциального распределения продолжительности разговора, для BG - границы размеров передаваемых файлов)
+        minB = {'GB':int(0.3*1024*1024),'BG':1024*1024} #минимально пороги объёма ресурса
+        maxGB - число #максимум ресурса заявок типа GB
         Qmax = {'GB':50,'BG':50} #максимальная длина очереди
         '''
-        
         #передаваемые начальные данные
         self.Rmax = Rmax
         self.R = Rmax #потом подумать нужно ли(по идее да, если тут классы схожи с классами в яве и тут не только фенкции задаются)
@@ -174,18 +110,36 @@ class VNO():
         Nn = {'SST':{'GB': 0,'BG': 0},
               'SWT':{'GB': 0,'BG': 0}}
         SRfr = 0 #среднний объём условно свободного ресурса
-        
         #model_time = 0                             #счетчик модельного времени
     
     #на всякий оставлю тут
     #https://python-scripts.com/python-class
     
     
+    def dictappend(dict_part, app):  #функция аналог фукнции append, но для строки внутри словаря
+        dict_part.append(app)
+        return dict_part
+
+    def dictpop(dict_part,popindex): #функция аналог фукнции pop, но для строки внутри словаря
+        dict_part.pop(popindex)
+        return dict_part
+    
     #
     #теперь нужно скопировать сюда функцию для RA и подстроить её под то, что VNO теперь объекты классов, если требуется
     #
-    def RA(moment, Mu, R, old_res_value, N, Rmax, maxGB, minB): #ResourceAllocation #то же что и raspredelenie
-    #def raspredelenie(moment, Mu, R, old_res_value, N, Rmax, maxGB, minB): #тут уже новые N, после увеличения/уменьшения(и не важно на сколько)
+    def RA(moment, Mu, R, old_res_value, N, Rmax, maxGB, minB): #ResourceAllocation #то же что и raspredelenie (коммент от raspredelenie: #тут уже новые N, после увеличения/уменьшения(и не важно на сколько))
+        '''
+        функция реализующая Resource Allocation (распределение ресурса между заявками в VNO)
+        RA(moment, Mu, R, old_res_value, N, Rmax, maxGB, minB)
+        moment - момент модельрного времени, в который производится перераспределение
+        Mu - словарь массивов моментов окончания обслуживания заявок по типам заявок
+        R - "условно свободный" ресурс
+        old_res_value - старое распределение ресурса по заявкам
+        N - словарь количества обслуживаемых виртуальным операторов заявок по типам
+        Rmax - выделенный MNO виртуальному оператору ресурс
+        maxGB - максимальный порог заявок типа GB
+        minB - словарь минимальных порогов заявок по типам
+        '''
         new_res_value = {'GB':0,'BG':Rmax}
         n = N['GB'] + N['BG']
         if n != 0:
@@ -194,13 +148,80 @@ class VNO():
                 if N['GB'] != 0:
                     new_res_value['GB'] = maxGB
                 if N['BG'] != 0:
-                    new_res_value['BG'] = minB['BG'] + int(R2/(N['BG']))#может немного и неправильно присваивать, но если их и нет, то ничего всё равно не будет(вроде(проверить потом при маленьком timelim)
+                    new_res_value['BG'] = minB['BG'] + int(R2/(N['BG']))
             else:
                 new_res_value['GB'] = minB['GB'] + int(R/n)
                 new_res_value['BG'] = minB['BG'] + int(R/n)
             for i in range(N['BG']):
                 Mu['BG'][i] = moment + (Mu['BG'][i]-moment)*old_res_value['BG']/new_res_value['BG']
         return Mu['BG'], new_res_value
+        
+        
+    def VNOs_work(self,this_moment, this_time_lim):
+        '''
+        функция симмуляции работы отдельного VNO на промежутке времени [this_moment;this_time_lim]
+        VNOs_work(self,this_moment, this_time_lim)
+        this_moment - модельный момент времени начала симуляции (в секундах)
+        this_time_lim - модельное время окончания симуляции
+        '''
+        while this_moment < this_time_lim:
+            minnow = this_time_lim
+            for k in self.Occ.keys():
+                for t in self.Occ[k].keys():
+                    for i in range(len(self.Occ[k][t])):
+                        if self.Occ[k][i] < minnow:
+                            minnow = self.Occ[k][t][i]
+                            Key = k #событие
+                            Type = t #тип заявки
+                            I = i #номер(индекс) заявки
+            this_moment = minnow
+            need_allocation = False
+            
+            if Key == 'Leaving':
+                #завершение обслуживания заявки
+                self.N[Type] -= 1
+                self.R += self.minB[Type]
+                self.Occ[Key][Type] = dictpop(...)
+                .
+                .
+                .
+                need_allocation = True
+                for t in self.Q.keys():
+                    while len(self.Q[t]) != 0 and self.R > self.minB[t]: 
+                        #если очередь не пуста и достаточно ресурса для принятия заявки из очереди
+                        #(с учетом приоритета, но в данном случае приоритет задается порядком ключей в словаре Q при его инициализации)
+                        self.N[t] += 1
+                        self.R -= self.minB[t]
+                        self.Mu[t] = dicpappend(...)
+                        .
+                        .
+            
+            if Key == 'Incoming': #поступление новой заявки
+                if R > self.minB[Type]: #проверяем достаточно ли для неё ресурса
+                    #ресурс выделить можем, поступает на обслуживание
+                    self.N[Type] += 1
+                    self.R -= self.minB[Type]
+                    self.Occ[k][t] = dictpop(...)
+                    .
+                    .
+                    .
+                    need_allocation = True
+                else:
+                    #ресурса не хватает
+                    if len(self.Q[Type]) < self.Qmax[Type]: #проверяем может ли заявка пойти в очередь
+                        #есть место в очереди
+                        self.Q[Type] = dicpappend(self.Q[Type],this_moment)
+                        .
+                        .
+                        .
+                    else:
+                        #места нету, значит блокировка
+                        self.block += 1
+            
+            #проверяем нужно ли перераспределение
+            if need_allocation:
+                self.Mu, self.res_value = self.RA(...)
+
 
 
 #####################################################
