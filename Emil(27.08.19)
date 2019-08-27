@@ -4,6 +4,9 @@ def dictpop(dict_part,popindex): #функция аналог фукнции pop
     dict_part.pop(popindex)
     return dict_part
 
+def dictappend(dict_part, app):  #функция аналог фукнции append, но для строки внутри словаря
+    dict_part.append(app)
+    return dict_part
 
 #Rmax = {'Uzel1': Rmax1, 'Uzel2':Rmax2, 'Uzel3': Rmax3} ###
 
@@ -31,42 +34,37 @@ Arr = {
        }
 
 
-All = 0   #счетчик количества поступивших в систему заявок
+All = 0          #счетчик количества поступивших в систему заявок
 time = 0         #задали счетчик модельного времени (или скорей указатель, так как мы его "сдвигаем", а не наращиваем)
 TimeLim = 50000  #и ограничение
 while time < TimeLim:
     min1 = TimeLim
-    #оперделяем какое событие произойдет далее(ближе всего к нашему моменту времени)
-    for k in Arr.keys(): #перебираем типы заявок(тут I и P)
-        for u in Arr[k].keys(): #для каждого типа перебираем узлы(Uzel1,2,3)
-            for i in Arr[k][u].keys(): #для каждого узла перебираем события(пока тут только "поступление"-Incoming и "завершение обслуживания"-Pribor)
-                for j in range(len(Arr[k][u][i])): #для каждого события перебираем времена наступления этих событий для каждой заявки
-                    if Arr[k][u][i][j] < min1:
-                        min1 = Arr[k][u][i][j]
-                        Uzel = u  #номер узла, в котором произошло событие (но нумерация от нуля)
-                        Type = k  #тип заявки(либо I либо P)
-                        Key = i   #событие(тут либо закончило обслуживание(Pribor), либо поступила новая заявка(Incoming))
+    #оперделяем какое событие произойдет далее(ближе всего к нашему моменту времени):
+    for t in Arr.keys(): #перебираем типы заявок(тут I и P)
+        for u in Arr[t].keys(): #для каждого типа перебираем узлы(Uzel1,2,3)
+            for k in Arr[t][u].keys(): #для каждого узла перебираем события(пока тут только "поступление"-Incoming и "завершение обслуживания"-Pribor)
+                for j in range(len(Arr[t][u][k])): #для каждого события перебираем времена наступления этих событий для каждой заявки
+                    if Arr[t][u][k][j] < min1:
+                        min1 = Arr[t][u][k][j]
+                        Uzel = u  #записываем номер узла, в котором произошло событие (но нумерация от нуля)
+                        Type = t  #тип заявки(либо I либо P)
+                        Key = k   #событие(тут либо закончило обслуживание(Pribor), либо поступила новая заявка(Incoming))
                         J = j     #индекс заявка в массиве "события"
-    time = min1
+    time = min1 #передвигае м наш указатель на время наступления следующего события
     
-    if Key == 'Pribor' and time != TimeLim: #уход из системы по завершению обслуживания
-        Arr[Type][Uzel]['Pribor'] = dictpop(Arr[Type][Uzel]['Pribor'],J) #удаляем из массива событый соответствуюзий элемент
+    if Key == 'Pribor' and time <= TimeLim: #уход из системы по завершению обслуживания
+        Arr[Type][Uzel]['Pribor'] = dictpop(Arr[Type][Uzel]['Pribor'],J) #удаляем из массива событый соответствующий элемент
         N[Type][Uzel] -= 1 #и учитываем что в системе стало на одну заявку меньше
         for i in range(len(Arr[Type][Uzel]['Pribor'])): 
             #перераспределение ресурса(перерасчет моментов ухода из системы):
-            Arr[Type][Uzel]['Pribor'][i] = time + (Arr[Type][Uzel]['Pribor'] - time)*(N['I'][Uzel]+N['P'][Uzel]+1)/(N['I'][Uzel]+N['P'][Uzel]) #(Arr['Pribor'][i]-time)*(bmin+TET/(N-j+1))/(bmin+TET/Nbg)
-            ##тут магия, проще формулой объяснить, чем текстом
-                                              #
-                                              #(N['I'][Uzel]+N['P'][Uzel]+1)/(N['I'][Uzel]+N['P'][Uzel]) !!!!!!!!!!!!!!
-                                              #
-    if Key == 'Incoming' and time != TimeLim: #поступление новой заявки в систему
+            Arr[Type][Uzel]['Pribor'][i] = time + (Arr[Type][Uzel]['Pribor'] - time)*(N['I'][Uzel]+N['P'][Uzel]+1)/(N['I'][Uzel]+N['P'][Uzel])
+    if Key == 'Incoming' and time <= TimeLim: #поступление новой заявки в систему
         All += 1
         N[Type][Uzel] += 1 
         for i in range(len(Arr[Type][Uzel]['Pribor'])):
             #перерасчет времени окончания обслуживания:
-            Arr[Type][Uzel]['Pribor'][i] = time + (Arr[Type][Uzel]['Pribor'][i]-time) * (N['I'][Uzel]+N['P'][Uzel]-1)/(N['I'][Uzel]+N['P'][Uzel]) ####!!!!!!!!!!! м б  (Arr[Type][Uzel]['Pribor'][i]-time) * N/(N+1)
+            Arr[Type][Uzel]['Pribor'][i] = time + (Arr[Type][Uzel]['Pribor'][i]-time) * (N['I'][Uzel]+N['P'][Uzel]-1)/(N['I'][Uzel]+N['P'][Uzel])
         #вычисление момента окончания обслуживания для поступившей на прибор заявки
-        Arr[Type][Uzel]['Pribor'] = dictappend(Arr[Type][Uzel]['Pribor'],time + expovariate(Mu[Type][Uzel])*(N['I'][Uzel]+N['P'][Uzel]))#expovariate(Mu[Type][Uzel])*TETMAX/(bmin+TET/Nbg))
-                                                                #возможно expovariate(Mu[Type][Uzel])*Rmax/(Rmax/N), то есть expovariate(Mu[Type][Uzel])*N
+        Arr[Type][Uzel]['Pribor'] = dictappend(Arr[Type][Uzel]['Pribor'],time + expovariate(Mu[Type][Uzel])*(N['I'][Uzel]+N['P'][Uzel])) ###expovariate(Mu[Type][Uzel])*TETMAX/(bmin+TET/Nbg))
         #следующая заяка посутив в момент:
         Arr[Type][Uzel]['Incoming'] = [time + expovariate(Lam[Type][Uzel])]
