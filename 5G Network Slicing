@@ -1,12 +1,12 @@
-#import numpy as np
-#from matplotlib import pyplot as plt
-#from random import expovariate as exprandom
 from threading import Thread
+from numpy import zeros
+from matplotlib import pyplot as plt
+#from random import expovariate as exprandom
 ###variable = Thread(target=function_name, args=(arg1, arg2,), name=«Имя потока») синтаксис задания потока
 #import time
 
-
-Occ = {'Leaving':{'GB':[],'BG':[],'BE':[]},'Incoming':{'GB':[],'BG':[],'BE':[]}}
+#Occ = {'Leaving':{'GB':[],'BG':[],'BE':[]},
+#       'Incoming':{'GB':[],'BG':[],'BE':[]}}
 
 
 def RS(N,Q,MNOmax,minB):#,maxGB):
@@ -17,7 +17,7 @@ def RS(N,Q,MNOmax,minB):#,maxGB):
     n = 0
     MMax = MNOmax
     Nkeys = N.keys()
-    ind = np.zeros(len(Nkeys))
+    ind = zeros(len(Nkeys))
     for i in Nkeys:
         n += N[i]['GB'] + N[i]['BG']
         s.append((N[i]['GB']+len(Q[i]['GB']))*minB[i]['GB'] + (N[i]['BG']+len(Q[i]['BG']))*minB[i]['BG']) #массив требуемых vno минимумов ресурса на ослуживание сразу всех имеющихся в их системе заявок(в том числе и тех, что в очереди)
@@ -28,7 +28,7 @@ def RS(N,Q,MNOmax,minB):#,maxGB):
     vno_dict = {}
     r_dict = {}
     if n !=0:
-        ss = np.zeros(3)
+        ss = zeros(3)
         if sum(s) != 0:
             for i in range(3):
                 ss[i] = s[i]/sum(s)
@@ -41,7 +41,6 @@ def RS(N,Q,MNOmax,minB):#,maxGB):
             vno_dict[key] = MNOmax/len(Nkeys)
             r_dict[key] = MNOmax/len(Nkeys)
         return vno_dict, r_dict #Rmax и R
-
 
 
 
@@ -94,7 +93,9 @@ class VNO():
         
         #задание массивов для работы и записи состояний
         N = {'GB': 0,'BG': 0}
-        Mu = {'GB': [],'BG': []}  #пусть будет называть Моменты ухода, позже изменить, неудачное сходство с mu
+        #Mu = {'GB': [],'BG': []}  #пусть будет называть Моменты ухода, позже изменить, неудачное сходство с mu
+        Occ = {'Leaving':{'GB':[],'BG':[],'BE':[]},
+               'Incoming':{'GB':[],'BG':[],'BE':[]}}
         Q = {'GB': [],'BG': []}
         StTi = {'GB': [],'BG': []}
         WaStTi = {'GB': [],'BG': []}
@@ -102,11 +103,11 @@ class VNO():
         res = {'GB': Rmax,'BG': Rmax}
         
         #счетчики
-        All = {'GB': 0,'BG': 0}    #счетчик поступивших заявок(всего, в том числе блокированных)
-        Block = {'GB': 0,'BG': 0}      #счетчик блокировок
-        SWT = {'GB': 0,'BG': 0}        #Sum Waitung Time для нахождения среднего времени ожидания
-        SST = {'GB': 0,'BG': 0}       #Sum Service Time для вычисления среднего времени обслуживания
-        SQ = {'GB': 0,'BG': 0}        #Sum Queue для нахождения средней длины очереди
+        All = {'GB': 0,'BG': 0}     #счетчик поступивших заявок(всего, в том числе блокированных)
+        Block = {'GB': 0,'BG': 0}   #счетчик блокировок
+        SWT = {'GB': 0,'BG': 0}     #Sum Waiting Time для нахождения среднего времени ожидания
+        SST = {'GB': 0,'BG': 0}     #Sum Service Time для вычисления среднего времени обслуживания
+        SQ = {'GB': 0,'BG': 0}      #Sum Queue для нахождения средней длины очереди
         Nn = {'SST':{'GB': 0,'BG': 0},
               'SWT':{'GB': 0,'BG': 0}}
         SRfr = 0 #среднний объём условно свободного ресурса
@@ -124,10 +125,9 @@ class VNO():
         dict_part.pop(popindex)
         return dict_part
     
-    #
-    #теперь нужно скопировать сюда функцию для RA и подстроить её под то, что VNO теперь объекты классов, если требуется
-    #
-    def RA(moment, Mu, R, old_res_value, N, Rmax, maxGB, minB): #ResourceAllocation #то же что и raspredelenie (коммент от raspredelenie: #тут уже новые N, после увеличения/уменьшения(и не важно на сколько))
+    
+    def RA(moment, Occ, R, old_res_value, N, Rmax, maxGB, minB):
+    #def RA(moment, Mu, R, old_res_value, N, Rmax, maxGB, minB): #ResourceAllocation #то же что и raspredelenie (коммент от raspredelenie: #тут уже новые N, после увеличения/уменьшения(и не важно на сколько))
         '''
         функция реализующая Resource Allocation (распределение ресурса между заявками в VNO)
         RA(moment, Mu, R, old_res_value, N, Rmax, maxGB, minB)
@@ -153,8 +153,10 @@ class VNO():
                 new_res_value['GB'] = minB['GB'] + int(R/n)
                 new_res_value['BG'] = minB['BG'] + int(R/n)
             for i in range(N['BG']):
-                Mu['BG'][i] = moment + (Mu['BG'][i]-moment)*old_res_value['BG']/new_res_value['BG']
-        return Mu['BG'], new_res_value
+                Occ['Leaving']['BG'][i] = moment + (Occ['Leaving']['BG'][i] - moment) * old_res_value['BG']/new_res_value['BG']
+                    #в будущем этот момент можно немного улучшить(не передавать этой функции Occ целиком, а только нужную его часть)
+                #Mu['BG'][i] = moment + (Mu['BG'][i]-moment)*old_res_value['BG']/new_res_value['BG']
+        return Occ['Leaving']['BG'], new_res_value
         
         
     def VNOs_work(self,this_moment, this_time_lim):
@@ -169,11 +171,11 @@ class VNO():
             for k in self.Occ.keys():
                 for t in self.Occ[k].keys():
                     for i in range(len(self.Occ[k][t])):
-                        if self.Occ[k][i] < minnow:
+                        if self.Occ[k][t][i] < minnow:
                             minnow = self.Occ[k][t][i]
-                            Key = k #событие
+                            Key = k  #событие
                             Type = t #тип заявки
-                            I = i #номер(индекс) заявки
+                            I = i    #номер(индекс) заявки
             this_moment = minnow
             need_allocation = False
             
@@ -181,60 +183,73 @@ class VNO():
                 #завершение обслуживания заявки
                 self.N[Type] -= 1
                 self.R += self.minB[Type]
-                self.Occ[Key][Type] = dictpop(...)
-                .
-                .
-                .
+                self.Occ[Key][Type] = dictpop(self.Occ[Key][Type], I)
+                #.
+                SWT[Type] += this_moment - WaStTi[Type][0]
+                WaStTi[Type] = dictpop(WaStTi[Type],0)
+                #.
                 need_allocation = True
-                for t in self.Q.keys():
+                for t in self.Q.keys():  #проверяем очередь
                     while len(self.Q[t]) != 0 and self.R > self.minB[t]: 
                         #если очередь не пуста и достаточно ресурса для принятия заявки из очереди
                         #(с учетом приоритета, но в данном случае приоритет задается порядком ключей в словаре Q при его инициализации)
                         self.N[t] += 1
                         self.R -= self.minB[t]
-                        self.Mu[t] = dicpappend(...)
-                        .
-                        .
+                        self.Q[t] = dictpop(self.Q[t], 0)
+                        
+                        #!!!
+                        self.Occ[Key][t] = dictappend(self.Occ[Key][t], ...)  ################################
+                        #self.Mu[t] = dicpappend(self.Mu[t], ...)
+                        #!!!
+                        
+                        
+                        #.запуск счетчика продолжительности обслуживания
+                        StTi[t] = dictappend(StTi[t], this_moment)
+                        #.
+                        #.
             
             if Key == 'Incoming': #поступление новой заявки
                 if R > self.minB[Type]: #проверяем достаточно ли для неё ресурса
                     #ресурс выделить можем, поступает на обслуживание
                     self.N[Type] += 1
                     self.R -= self.minB[Type]
-                    self.Occ[k][t] = dictpop(...)
-                    .
-                    .
-                    .
+                    self.Occ[Key][Type] = dictappend(self.Occ[Key][Type])#dictpop(...)
+                    #.
+                    StTi[Type] = dictappend(StTi[Type], this_moment)
+                    #.
                     need_allocation = True
                 else:
                     #ресурса не хватает
                     if len(self.Q[Type]) < self.Qmax[Type]: #проверяем может ли заявка пойти в очередь
                         #есть место в очереди
                         self.Q[Type] = dicpappend(self.Q[Type],this_moment)
-                        .
-                        .
-                        .
+                        #запуск счетчика продолжительности ожидания
+                        WaStTi[Type] = dictappend(WaStTi[Type], this_moment)
+                        #.
                     else:
                         #места нету, значит блокировка
                         self.block += 1
             
             #проверяем нужно ли перераспределение
             if need_allocation:
-                self.Mu, self.res_value = self.RA(...)
+                self.Occ['Leaving']['BG'], self.res_value = self.RA(...)
+                #self.Mu, self.res_value = self.RA(...)
 
 
 
-#####################################################
+#########################################################
 
 #начальные данные
 delta = 0.01
 #MNOmax =
 
-vno_mas = [VNO(Rmax= , Lam = , Volume = , minB = , maxGB = , Qmax = ), VNO(Rmax= , Lam = , Volume = , minB = , maxGB = , Qmax = ), VNO(Rmax= , Lam = , Volume = , minB = , maxGB = , Qmax = )]#при добавдении генератора Егора, отсюда убираются Lam и Volume
+vno_mas = [VNO(Rmax= , Lam = , Volume = , minB = , maxGB = , Qmax = ),
+           VNO(Rmax= , Lam = , Volume = , minB = , maxGB = , Qmax = ),
+           VNO(Rmax= , Lam = , Volume = , minB = , maxGB = , Qmax = )]#при добавдении генератора Егора, отсюда убираются Lam и Volume
 #
 results = Simulation_main_function(delta, vno_mas)
 
-############################################
+###############################################
 
 КОПИЯ ПРЕДЫДУЩЕЙ ВЕРСИИ:
 
